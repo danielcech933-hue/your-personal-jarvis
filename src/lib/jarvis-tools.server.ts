@@ -46,15 +46,16 @@ export async function webSearch(query: string) {
     /<a[^>]+class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="[^"]*result__a|<\/div>\s*<\/div>\s*<\/div>)/g;
   let match: RegExpExecArray | null;
   while ((match = blockRe.exec(html)) && results.length < 6) {
-    let url = match[1];
+    let url = match[1] ?? "";
     const uddg = /uddg=([^&]+)/.exec(url);
-    if (uddg) url = decodeURIComponent(uddg[1]);
+    if (uddg?.[1]) url = decodeURIComponent(uddg[1]);
     if (url.startsWith("//")) url = `https:${url}`;
     results.push({
-      title: stripHtml(match[2]).slice(0, 200),
+      title: stripHtml(match[2] ?? "").slice(0, 200),
       url,
-      snippet: stripHtml(match[3]).slice(0, 300),
+      snippet: stripHtml(match[3] ?? "").slice(0, 300),
     });
+
   }
   return { results };
 }

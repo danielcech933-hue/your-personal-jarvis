@@ -39,7 +39,7 @@ export function speak(text: string, onLevel?: (level: number) => void): SpeakHan
       sources.push(source);
       if (onLevel) {
         let sum = 0;
-        for (let i = 0; i < floats.length; i += 64) sum += Math.abs(floats[i]);
+        for (let i = 0; i < floats.length; i += 64) sum += Math.abs(floats[i] ?? 0);
         onLevel(Math.min(1, (sum / (floats.length / 64)) * 4));
       }
     };
