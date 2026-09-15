@@ -30,35 +30,41 @@ function stripHtml(html: string) {
 }
 
 export async function webSearch(query: string) {
-  const res = await fetch("https://html.duckduckgo.com/html/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  const res = await fetch(
+    `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`,
+    {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml",
+      },
     },
-    body: new URLSearchParams({ q: query }).toString(),
-  });
+  );
   if (!res.ok) return { error: `Search failed with status ${res.status}`, results: [] };
   const html = await res.text();
-  const results: { title: string; url: string; snippet: string }[] = [];
-  const blockRe =
-    /<a[^>]+class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)(?=<a[^>]+class="[^"]*result__a|<\/div>\s*<\/div>\s*<\/div>)/g;
-  let match: RegExpExecArray | null;
-  while ((match = blockRe.exec(html)) && results.length < 6) {
-    let url = match[1] ?? "";
+
+  const links: { title: string; url: string }[] = [];
+  const linkRe = /<a[^>]+href="([^"]+)"[^>]*class=['"]result-link['"][^>]*>([\s\S]*?)<\/a>/g;
+  let m: RegExpExecArray | null;
+  while ((m = linkRe.exec(html)) && links.length < 6) {
+    let url = (m[1] ?? "").replace(/&amp;/g, "&");
     const uddg = /uddg=([^&]+)/.exec(url);
     if (uddg?.[1]) url = decodeURIComponent(uddg[1]);
     if (url.startsWith("//")) url = `https:${url}`;
-    results.push({
-      title: stripHtml(match[2] ?? "").slice(0, 200),
-      url,
-      snippet: stripHtml(match[3] ?? "").slice(0, 300),
-    });
-
+    links.push({ title: stripHtml(m[2] ?? "").slice(0, 200), url });
   }
+
+  const snippets: string[] = [];
+  const snippetRe = /class=['"]result-snippet['"][^>]*>([\s\S]*?)<\/td>/g;
+  while ((m = snippetRe.exec(html)) && snippets.length < 6) {
+    snippets.push(stripHtml(m[1] ?? "").slice(0, 300));
+  }
+
+  const results = links.map((link, i) => ({ ...link, snippet: snippets[i] ?? "" }));
+  if (!results.length) return { error: "Vyhledávání nevrátilo žádné výsledky.", results };
   return { results };
 }
+
 
 export async function readPage(url: string) {
   const res = await fetch(url, {
