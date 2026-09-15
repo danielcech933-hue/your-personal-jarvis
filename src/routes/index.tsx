@@ -61,6 +61,9 @@ function JarvisPage() {
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [micSupported, setMicSupported] = useState(true);
+  const [mood, setMood] = useState<AvatarMood>("normal");
+  const lastActivityRef = useRef(Date.now());
+  const lastQuestionRef = useRef(0);
 
   const speakRef = useRef<SpeakHandle | null>(null);
   const recognitionRef = useRef<ReturnType<typeof createRecognition>>(null);
@@ -212,6 +215,8 @@ function JarvisPage() {
       const value = text.trim();
       if (!value) return;
       setError(null);
+      lastActivityRef.current = Date.now();
+      setMood("normal");
       stopSpeaking();
       void sendMessage({ text: value });
     },
