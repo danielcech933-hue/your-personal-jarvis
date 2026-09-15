@@ -1,4 +1,4 @@
-import { Palette, Sparkles, UserRound, WandSparkles } from "lucide-react";
+import { Palette, UserRound, WandSparkles } from "lucide-react";
 import type { JarvisAppearance } from "@/lib/jarvis-profile";
 
 type Props = { appearance: JarvisAppearance; onChange: (appearance: JarvisAppearance) => void };
@@ -23,8 +23,6 @@ const labels: Record<string, string> = {
   white: "Bílé",
   crimson: "Crimson",
   cyan: "Cyan",
-  violet: "Violet",
-  rose: "Rose",
   slim: "Štíhlá",
   athletic: "Sportovní",
   curvy: "Výrazná",
