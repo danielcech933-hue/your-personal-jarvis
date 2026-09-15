@@ -1,11 +1,7 @@
-const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-const THREE_ADDONS_URL = "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/";
-const VRM_URL = "https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@3.5.5/lib/three-vrm.module.min.js";
-
 try {
-  const THREE = await import(THREE_URL);
-  const { GLTFLoader } = await import(`${THREE_ADDONS_URL}loaders/GLTFLoader.js`);
-  const { VRMLoaderPlugin, VRMUtils } = await import(VRM_URL);
+  const THREE = await import("three");
+  const { GLTFLoader } = await import("three/addons/loaders/GLTFLoader.js");
+  const { VRMLoaderPlugin, VRMUtils } = await import("@pixiv/three-vrm");
   window.THREE = THREE;
   window.THREE_GLTFLoader = GLTFLoader;
   window.THREE_VRM = { VRMLoaderPlugin, VRMUtils };
