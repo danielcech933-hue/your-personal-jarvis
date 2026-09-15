@@ -4,7 +4,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Mic, MicOff, Send, Square, Trash2, Volume2, VolumeX } from "lucide-react";
-import { JarvisAvatar } from "@/components/JarvisAvatar";
+import { JarvisAvatar, type AvatarMood } from "@/components/JarvisAvatar";
 import { createRecognition, speak, type SpeakHandle } from "@/lib/speech";
 
 export const Route = createFileRoute("/")({
@@ -33,6 +33,16 @@ type Note = { id: string; text: string };
 
 const NOTES_KEY = "jarvis.notes";
 
+const IDLE_QUESTIONS = [
+  "Tak co, pane, na čem zrovna děláte? Můžu se do toho opřít s vámi.",
+  "Nudím se tu. Nechcete, abych něco vyhledal na internetu?",
+  "Mám vám připomenout něco na dnešek, nebo si dáme klid?",
+  "Kdybyste chtěl obrázek čehokoliv, stačí říct. Zrovna mám volno.",
+  "Zajímalo by mě, jaký máte den. Jak to jde?",
+  "Můžu zkusit najít něco zajímavého ke čtení. Co vás teď baví?",
+  "Jsem tu pořád. Mám něco zapsat do poznámek?",
+];
+
 function textOf(message: UIMessage) {
   return message.parts
     .map((part) => (part.type === "text" ? part.text : ""))
@@ -51,6 +61,9 @@ function JarvisPage() {
   const [speaking, setSpeaking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [micSupported, setMicSupported] = useState(true);
+  const [mood, setMood] = useState<AvatarMood>("normal");
+  const lastActivityRef = useRef(Date.now());
+  const lastQuestionRef = useRef(0);
 
   const speakRef = useRef<SpeakHandle | null>(null);
   const recognitionRef = useRef<ReturnType<typeof createRecognition>>(null);
@@ -202,6 +215,8 @@ function JarvisPage() {
       const value = text.trim();
       if (!value) return;
       setError(null);
+      lastActivityRef.current = Date.now();
+      setMood("normal");
       stopSpeaking();
       void sendMessage({ text: value });
     },
