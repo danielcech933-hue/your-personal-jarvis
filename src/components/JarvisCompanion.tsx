@@ -4,11 +4,81 @@ export type { AvatarMood, AvatarState } from "./JarvisCompanionTypes";
 
 type Props = { state: AvatarState; mood: AvatarMood; level: number; onAsk?: (question: string) => void };
 type Action = "idle" | "walk" | "sit" | "spin" | "jump" | "flip" | "wave";
-declare global { interface Window { THREE?: any } }
-const clamp=(v:number,min:number,max:number)=>Math.min(max,Math.max(min,v));
-function mat(T:any,c:number,e=0,r=.5,m=.2){return new T.MeshStandardMaterial({color:c,emissive:e,emissiveIntensity:e?1.3:0,roughness:r,metalness:m});}
-function add(T:any,p:any,g:any,ma:any,pos:[number,number,number],s:[number,number,number]=[1,1,1]){const o=new T.Mesh(g,ma);o.position.set(...pos);o.scale.set(...s);o.castShadow=true;o.receiveShadow=true;p.add(o);return o;}
-function createCharacter(T:any){const root=new T.Group(),g:Record<string,any>={};const white=mat(T,0xeaf6ff,0x193c66,.32,.34),dark=mat(T,0x0a1120,0x021a36,.22,.72),cyan=mat(T,0x55e9ff,0x00d9ff,.2,.58),skin=mat(T,0xf4d4d2,0x18090c,.62,.05),eye=mat(T,0x8eefff,0x00ddff,.12,.22),black=mat(T,0x02040a);g.body=new T.Group();g.body.position.y=2;root.add(g.body);add(T,g.body,new T.CapsuleGeometry(.62,.9,8,20),dark,[0,0,0],[.92,1,.7]);add(T,g.body,new T.CapsuleGeometry(.38,.45,8,18),white,[0,.14,.48],[1.08,1.08,.27]);add(T,g.body,new T.TorusGeometry(.23,.04,10,36),cyan,[0,.15,.72],[1,1,.72]);add(T,g.body,new T.OctahedronGeometry(.17,1),cyan,[0,.15,.76]);g.head=new T.Group();g.head.position.y=1.18;g.body.add(g.head);add(T,g.head,new T.SphereGeometry(.64,32,24),skin,[0,0,0],[1,1,.93]);for(let i=-2;i<=2;i++)add(T,g.head,new T.SphereGeometry(.4,18,14),white,[i*.25,-.11,-.35],[.98,1.48,.74]);for(let i=-3;i<=3;i++)add(T,g.head,new T.SphereGeometry(.2,16,12),white,[i*.175,.18-Math.abs(i)*.027,-.5],[1,1.36,.55]);g.eyeL=add(T,g.head,new T.SphereGeometry(.095,16,12),eye,[-.21,.03,-.575],[.85,1.42,.45]);g.eyeR=add(T,g.head,new T.SphereGeometry(.095,16,12),eye,[.21,.03,-.575],[.85,1.42,.45]);g.mouth=add(T,g.head,new T.SphereGeometry(.04,12,8),black,[0,-.16,-.585],[1.9,.45,.4]);const halo=add(T,g.head,new T.TorusGeometry(.5,.027,8,56),cyan,[0,.56,0],[1,.52,.62]);halo.rotation.x=Math.PI/2;add(T,g.head,new T.TorusGeometry(.18,.025,8,30),cyan,[-.61,.03,0],[1,1.16,.72]);add(T,g.head,new T.TorusGeometry(.18,.025,8,30),cyan,[.61,.03,0],[1,1.16,.72]);g.hip=new T.Group();g.hip.position.y=-.76;g.body.add(g.hip);add(T,g.hip,new T.ConeGeometry(.73,.48,10,1,true),white,[0,0,0],[1,1,.72]);add(T,g.hip,new T.TorusGeometry(.56,.045,8,28),cyan,[0,-.18,0],[1,1,.72]);g.armL=new T.Group();g.armR=new T.Group();g.armL.position.set(-.76,.3,0);g.armR.position.set(.76,.3,0);g.body.add(g.armL,g.armR);add(T,g.armL,new T.CylinderGeometry(.13,.17,.62,16),white,[0,-.3,0]);add(T,g.armR,new T.CylinderGeometry(.13,.17,.62,16),white,[0,-.3,0]);g.foreL=new T.Group();g.foreR=new T.Group();g.foreL.position.y=-.61;g.foreR.position.y=-.61;g.armL.add(g.foreL);g.armR.add(g.foreR);add(T,g.foreL,new T.CylinderGeometry(.115,.145,.6,16),dark,[0,-.3,0]);add(T,g.foreR,new T.CylinderGeometry(.115,.145,.6,16),dark,[0,-.3,0]);add(T,g.foreL,new T.SphereGeometry(.14,14,10),white,[0,-.61,0]);add(T,g.foreR,new T.SphereGeometry(.14,14,10),white,[0,-.61,0]);g.thighL=new T.Group();g.thighR=new T.Group();g.thighL.position.set(-.31,-1.02,0);g.thighR.position.set(.31,-1.02,0);g.hip.add(g.thighL,g.thighR);add(T,g.thighL,new T.CylinderGeometry(.16,.13,.68,16),white,[0,-.33,0]);add(T,g.thighR,new T.CylinderGeometry(.16,.13,.68,16),white,[0,-.33,0]);g.calfL=new T.Group();g.calfR=new T.Group();g.calfL.position.y=-.68;g.calfR.position.y=-.68;g.thighL.add(g.calfL);g.thighR.add(g.calfR);add(T,g.calfL,new T.CylinderGeometry(.12,.1,.7,16),dark,[0,-.35,0]);add(T,g.calfR,new T.CylinderGeometry(.12,.1,.7,16),dark,[0,-.35,0]);g.bootL=add(T,g.calfL,new T.CapsuleGeometry(.19,.3,7,14),white,[0,-.78,-.19],[1,.56,1.48]);g.bootR=add(T,g.calfR,new T.CapsuleGeometry(.19,.3,7,14),white,[0,-.78,-.19],[1,.56,1.48]);return{root,g,cyan,eyes:[g.eyeL,g.eyeR]};}
-function reset(c:any){const g=c.g;g.body.position.y=2;g.body.rotation.set(0,0,0);g.head.rotation.set(0,0,0);g.hip.rotation.set(0,0,0);g.armL.rotation.set(0,0,.08);g.armR.rotation.set(0,0,-.08);g.foreL.rotation.set(0,0,0);g.foreR.rotation.set(0,0,0);g.thighL.rotation.set(0,0,0);g.thighR.rotation.set(0,0,0);g.calfL.rotation.set(0,0,0);g.calfR.rotation.set(0,0,0);}
-function animate(c:any,a:Action,t:number,l:number,mood:AvatarMood){const g=c.g,w=Math.sin(t*8),q=Math.sin(t*8+Math.PI);reset(c);g.body.position.y+=Math.sin(t*2.3)*.025;if(a==='walk'){g.thighL.rotation.x=w*.62;g.thighR.rotation.x=q*.62;g.calfL.rotation.x=Math.max(0,-w)*.48;g.calfR.rotation.x=Math.max(0,-q)*.48;g.armL.rotation.x=q*.5;g.armR.rotation.x=w*.5;g.body.rotation.z=Math.sin(t*4)*.035;g.body.position.y+=Math.abs(w)*.035;}if(a==='wave'){g.armR.rotation.z=-.92;g.armR.rotation.x=-.32;g.foreR.rotation.z=-.76+Math.sin(t*10)*.32;}if(a==='sit'){g.body.position.y=1.32;g.body.rotation.x=-.2;g.hip.rotation.x=.16;g.thighL.rotation.x=-1.2;g.thighR.rotation.x=-1.2;g.calfL.rotation.x=1.22;g.calfR.rotation.x=1.22;g.head.rotation.x=mood==='sleep'?.25:.04;if(mood==='sleep')g.head.rotation.z=.08;}if(a==='spin')g.body.rotation.y=t*Math.PI*1.8;if(a==='jump'){const p=(t%1.25)/1.25;g.body.position.y=2+Math.sin(p*Math.PI)*1.1;g.armL.rotation.z=.55;g.armR.rotation.z=-.55;g.thighL.rotation.x=-.28;g.thighR.rotation.x=.28;g.calfL.rotation.x=.7;g.calfR.rotation.x=.7;}if(a==='flip'){g.body.rotation.x=t*Math.PI*2.3;g.armL.rotation.z=.72;g.armR.rotation.z=-.72;g.thighL.rotation.x=.35;g.thighR.rotation.x=-.35;}if(a==='idle'){g.head.rotation.y=Math.sin(t*1.15)*.08;g.head.rotation.z=Math.sin(t*.8)*.035;}g.mouth.scale.y=l>.02?.45+Math.min(l,1)*.65:.45;c.cyan.emissiveIntensity=l>.02?1.3+Math.min(l,1)*3.2:1.25;const sleep=mood==='sleep'&&a==='sit';c.eyes.forEach((e:any)=>e.scale.y=sleep?.12:1);}
-export function JarvisCompanion({state,mood,level}:Props){const mountRef=useRef<HTMLDivElement|null>(null),propsRef=useRef({state,mood,level});useEffect(()=>{propsRef.current={state,mood,level}},[state,mood,level]);useEffect(()=>{const mount=mountRef.current;if(!mount)return;let cancelled=false,wait=0,cleanup:(()=>void)|undefined;const boot=()=>{if(cancelled)return;const T=window.THREE;if(!T){wait=window.setTimeout(boot,100);return;}const scene=new T.Scene(),camera=new T.PerspectiveCamera(32,innerWidth/innerHeight,.1,100);camera.position.set(0,3,9);camera.lookAt(0,2,0);const renderer=new T.WebGLRenderer({alpha:true,antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;scene.add(new T.HemisphereLight(0xa6ddff,0x07111d,2.2));const key=new T.DirectionalLight(0xffffff,3.5);key.position.set(4,7,6);key.castShadow=true;scene.add(key);const cyan=new T.PointLight(0x19dcff,11,16);cyan.position.set(-4,3,1);scene.add(cyan);const gold=new T.PointLight(0xffc86b,3.5,9);gold.position.set(4,2,2);scene.add(gold);const c=createCharacter(T);scene.add(c.root);let x=0,z=0,tx=0,tz=0,action:Action='idle',started=performance.now()/1000,next=started+2.5,px=0,py=0,raf=0;const choose=(now:number)=>{const{s,mood}= {s:propsRef.current.state,mood:propsRef.current.mood};if(s!=='idle'){action='idle';next=now+1;return;}const pool:Action[]=mood==='play'?['walk','walk','jump','spin','flip','wave']:mood==='bored'?['walk','sit','wave','idle']:mood==='sleep'?['sit','sit','idle']:['walk','walk','wave','spin','idle'];action=pool[Math.floor(Math.random()*pool.length)]??'idle';started=now;next=now+(action==='walk'?4+Math.random()*3:action==='flip'?1.7:action==='spin'?2.2:1.5+Math.random()*2);if(action==='walk'){tx=(Math.random()-.5)*6.2;tz=(Math.random()-.5)*1.5;}};const ptr=(e:PointerEvent)=>{px=e.clientX/Math.max(innerWidth,1)*2-1;py=e.clientY/Math.max(innerHeight,1)*2-1};window.addEventListener('pointermove',ptr,{passive:true});choose(started);const loop=()=>{const now=performance.now()/1000;if(now>=next)choose(now);if(action==='walk'){const dx=tx-x,dz=tz-z,d=Math.hypot(dx,dz);if(d<.08)next=Math.min(next,now+.3);else{x+=(dx/Math.max(d,.001))*.014;z+=(dz/Math.max(d,.001))*.014;c.root.rotation.y=Math.atan2(dx,dz);}}x=clamp(x,-3.2,3.2);z=clamp(z,-1.15,1.15);c.root.position.set(x,0,z);animate(c,action,now-started,propsRef.current.level,propsRef.current.mood);c.g.head.rotation.y+=clamp(px*.2,-.2,.2)*.12;c.g.head.rotation.x+=clamp(-py*.08,-.08,.08)*.12;renderer.render(scene,camera);raf=requestAnimationFrame(loop)};loop();const resize=()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)};window.addEventListener('resize',resize);mount.appendChild(renderer.domElement);cleanup=()=>{cancelAnimationFrame(raf);clearTimeout(wait);window.removeEventListener('resize',resize);window.removeEventListener('pointermove',ptr);renderer.dispose();renderer.domElement.remove();scene.traverse((o:any)=>{o.geometry?.dispose?.();if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach((m:any)=>m.dispose?.())})};};boot();return()=>{cancelled=true;clearTimeout(wait);cleanup?.()};},[]);return <div ref={mountRef} className="jarvis-3d-layer" aria-label="Živý 3D Jarvis"/>;}
+
+type Vec3 = [number, number, number];
+
+type Part = { pos: Vec3; rot: Vec3; scale: Vec3; color: [number, number, number] };
+
+const clamp = (v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
+
+function mul(a:number[],b:number[]){const r=new Array<number>(16).fill(0);for(let c=0;c<4;c++)for(let rr=0;rr<4;rr++)for(let k=0;k<4;k++)r[c*4+rr]+=a[k*4+rr]*b[c*4+k];return r;}
+function ident(){return [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];}
+function tr(x:number,y:number,z:number){const m=ident();m[12]=x;m[13]=y;m[14]=z;return m;}
+function sc(x:number,y:number,z:number){const m=ident();m[0]=x;m[5]=y;m[10]=z;return m;}
+function rx(a:number){const c=Math.cos(a),s=Math.sin(a);return [1,0,0,0,0,c,s,0,0,-s,c,0,0,0,0,1];}
+function ry(a:number){const c=Math.cos(a),s=Math.sin(a);return [c,0,-s,0,0,1,0,0,s,0,c,0,0,0,0,1];}
+function rz(a:number){const c=Math.cos(a),s=Math.sin(a);return [c,s,0,0,-s,c,0,0,0,0,1,0,0,0,0,1];}
+function compose(p:Vec3,r:Vec3,s:Vec3){return mul(mul(mul(tr(...p),rz(r[2])),ry(r[1])),mul(rx(r[0]),sc(...s)));}
+function perspective(fov:number,aspect:number,near:number,far:number){const f=1/Math.tan(fov/2),nf=1/(near-far);return [f/aspect,0,0,0,0,f,0,0,0,0,(far+near)*nf,-1,0,0,(2*far*near)*nf,0];}
+function lookAt(eye:Vec3,center:Vec3,up:Vec3){const z=norm([eye[0]-center[0],eye[1]-center[1],eye[2]-center[2]]),x=norm(cross(up,z)),y=cross(z,x);return [x[0],y[0],z[0],0,x[1],y[1],z[1],0,x[2],y[2],z[2],0,-dot(x,eye),-dot(y,eye),-dot(z,eye),1];}
+function cross(a:Vec3,b:Vec3):Vec3{return [a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+function dot(a:Vec3,b:Vec3){return a[0]*b[0]+a[1]*b[1]+a[2]*b[2];}
+function norm(a:Vec3){const d=Math.hypot(...a)||1;return [a[0]/d,a[1]/d,a[2]/d] as Vec3;}
+
+const cubeVerts=new Float32Array([
+-1,-1,-1, 1,-1,-1, 1,1,-1, -1,1,-1, -1,-1,1, 1,-1,1, 1,1,1, -1,1,1
+]);
+const cubeIdx=new Uint16Array([0,1,2,2,3,0,1,5,6,6,2,1,5,4,7,7,6,5,4,0,3,3,7,4,3,2,6,6,7,3,4,5,1,1,0,4]);
+
+function addPart(parts:Part[],pos:Vec3,rot:Vec3,scale:Vec3,color:[number,number,number]){parts.push({pos,rot,scale,color});}
+
+function drawHumanoid(gl:WebGLRenderingContext,program:WebGLProgram,loc:any,action:Action,t:number,level:number,mood:AvatarMood){
+  const parts:Part[]=[]; const cyan:[number,number,number]=[0.15,0.92,1.0], dark:[number,number,number]=[0.035,0.07,0.13], white:[number,number,number]=[0.86,0.94,1.0], skin:[number,number,number]=[0.98,0.78,0.76], gold:[number,number,number]=[1.0,0.68,0.25];
+  const w=Math.sin(t*7), q=Math.sin(t*7+Math.PI);
+  addPart(parts,[0,2.65,0],[0,0,0],[0.72,1.05,0.42],dark);
+  addPart(parts,[0,2.65,0.46],[0,0,0],[0.42,0.55,0.09],cyan);
+  addPart(parts,[0,3.95,0],[0,0,0],[0.64,0.62,0.62],skin);
+  addPart(parts,[-0.25,4.02,-0.55],[0,0,0],[0.11,0.16,0.06],cyan);
+  addPart(parts,[0.25,4.02,-0.55],[0,0,0],[0.11,0.16,0.06],cyan);
+  addPart(parts,[0,3.72,-0.58],[0,0,0],[0.16,0.055,0.04],dark);
+  for(let i=-2;i<=2;i++) addPart(parts,[i*.23,4.15,0],[0,0,0],[0.23,0.72,0.26],white);
+  addPart(parts,[-0.78,2.7,0],[0,0,0.08],[0.18,0.62,0.18],white); addPart(parts,[0.78,2.7,0],[0,0,-0.08],[0.18,0.62,0.18],white);
+  addPart(parts,[-0.78,2.02,0],[0,0,0],[0.15,0.58,0.15],dark); addPart(parts,[0.78,2.02,0],[0,0,0],[0.15,0.58,0.15],dark);
+  addPart(parts,[-0.32,1.45,0],[0,0,0],[0.22,0.7,0.22],white); addPart(parts,[0.32,1.45,0],[0,0,0],[0.22,0.7,0.22],white);
+  addPart(parts,[-0.32,0.72,0],[0,0,0],[0.17,0.72,0.17],dark); addPart(parts,[0.32,0.72,0],[0,0,0],[0.17,0.72,0.17],dark);
+  addPart(parts,[-0.32,0.02,-0.12],[0,0,0],[0.28,0.13,0.5],white); addPart(parts,[0.32,0.02,-0.12],[0,0,0],[0.28,0.13,0.5],white);
+
+  if(action==='walk'){parts.forEach((p,i)=>{if(i===9)p.rot[0]=w*.7;if(i===10)p.rot[0]=q*.7;if(i===11)p.rot[0]=Math.max(0,-w)*.55;if(i===12)p.rot[0]=Math.max(0,-q)*.55;if(i===7)p.rot[0]=q*.5;if(i===8)p.rot[0]=w*.5;p.pos[1]+=Math.abs(w)*.06;});}
+  if(action==='wave'){parts[7].rot[0]=-.35;parts[7].rot[2]=-.95;parts[8].rot[0]=-.25;parts[8].rot[2]=Math.sin(t*10)*.35-.75;}
+  if(action==='sit'){for(const p of parts){if(p.pos[1]<1.3)p.pos[1]-=.6;p.rot[0]+=.2;}parts[9].rot[0]=-1.15;parts[10].rot[0]=-1.15;parts[11].rot[0]=1.2;parts[12].rot[0]=1.2;}
+  if(action==='jump'){const y=Math.sin((t%1.2)/1.2*Math.PI)*1.1;parts.forEach(p=>p.pos[1]+=y);}
+  if(action==='spin')parts.forEach(p=>p.rot[1]+=t*3.5);
+  if(action==='flip')parts.forEach(p=>p.rot[0]+=t*6.2);
+  if(mood==='sleep'&&action==='sit'){parts[2].rot[2]=.12;parts[2].rot[0]=.18;}
+  parts[4].scale[1]*=1+level*.15; parts[5].scale[1]*=1+level*.15;
+
+  const view=lookAt([0,2.4,10],[0,2.3,0],[0,1,0]); const proj=perspective(Math.PI/4,gl.canvas.width/gl.canvas.height,.1,100);
+  for(const p of parts){let model=compose(p.pos,p.rot,p.scale);let mvp=mul(proj,mul(view,model));gl.uniformMatrix4fv(loc.uMvp,false,new Float32Array(mvp));gl.uniform3fv(loc.uColor,new Float32Array(p.color));gl.drawElements(gl.TRIANGLES,cubeIdx.length,gl.UNSIGNED_SHORT,0);}
+}
+
+export function JarvisCompanion({state,mood,level}:Props){
+  const ref=useRef<HTMLCanvasElement|null>(null); const props=useRef({state,mood,level});
+  useEffect(()=>{props.current={state,mood,level}},[state,mood,level]);
+  useEffect(()=>{
+    const canvas=ref.current; if(!canvas)return;
+    const gl=canvas.getContext("webgl",{antialias:true,alpha:true}); if(!gl)return;
+    const vs=`attribute vec3 aPosition;uniform mat4 uMvp;void main(){gl_Position=uMvp*vec4(aPosition,1.0);}`;
+    const fs=`precision mediump float;uniform vec3 uColor;void main(){float l=.65+.35*max(0.0,gl_FragCoord.y/1000.0);gl_FragColor=vec4(uColor*l,1.0);}`;
+    const compile=(type:number,src:string)=>{const s=gl.createShader(type)!;gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s)||"shader");return s;};
+    const program=gl.createProgram()!;gl.attachShader(program,compile(gl.VERTEX_SHADER,vs));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fs));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))return;gl.useProgram(program);
+    const vb=gl.createBuffer()!;gl.bindBuffer(gl.ARRAY_BUFFER,vb);gl.bufferData(gl.ARRAY_BUFFER,cubeVerts,gl.STATIC_DRAW);const ib=gl.createBuffer()!;gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,cubeIdx,gl.STATIC_DRAW);
+    const pos=gl.getAttribLocation(program,"aPosition");gl.enableVertexAttribArray(pos);gl.vertexAttribPointer(pos,3,gl.FLOAT,false,0,0);const loc={uMvp:gl.getUniformLocation(program,"uMvp"),uColor:gl.getUniformLocation(program,"uColor")};gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);
+    let raf=0,start=performance.now()/1000,next=start+2.5,x=0,z=0,tx=0,tz=0,action:Action="idle",begin=start;
+    const choose=(now:number)=>{const p=props.current;if(p.state!=="idle"){action="idle";begin=now;next=now+1;return;}const pool:Action[]=p.mood==="play"?["walk","walk","jump","spin","flip","wave"]:p.mood==="bored"?["walk","sit","wave","idle"]:p.mood==="sleep"?["sit","sit","idle"]:["walk","walk","wave","spin","idle"];action=pool[Math.floor(Math.random()*pool.length)]||"idle";begin=now;next=now+(action==="walk"?4+Math.random()*3:1.5+Math.random()*2);if(action==="walk"){tx=(Math.random()-.5)*6;tz=(Math.random()-.5)*2;}};
+    const resize=()=>{const d=Math.min(devicePixelRatio,2),w=Math.max(1,Math.floor(innerWidth*d)),h=Math.max(1,Math.floor(innerHeight*d));canvas.width=w;canvas.height=h;canvas.style.width="100vw";canvas.style.height="100vh";gl.viewport(0,0,w,h);}; resize();addEventListener("resize",resize);
+    const move=(e:PointerEvent)=>{const nx=e.clientX/innerWidth*2-1;const ny=e.clientY/innerHeight*2-1;tx=x-nx*.25;tz=z+ny*.15;};addEventListener("pointermove",move,{passive:true});choose(start);
+    const loop=()=>{const now=performance.now()/1000;if(now>=next)choose(now);if(action==="walk"){const dx=tx-x,dz=tz-z,d=Math.hypot(dx,dz);if(d>.08){x+=(dx/d)*.018;z+=(dz/d)*.018;}}x=clamp(x,-3.3,3.3);z=clamp(z,-1.5,1.5);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(program);const p=props.current;drawHumanoid(gl,program,loc,action,now-begin,p.level,p.mood);raf=requestAnimationFrame(loop);};loop();
+    return()=>{cancelAnimationFrame(raf);removeEventListener("resize",resize);removeEventListener("pointermove",move);gl.deleteBuffer(vb);gl.deleteBuffer(ib);gl.deleteProgram(program);};
+  },[]);
+  return <canvas ref={ref} className="jarvis-3d-layer" aria-label="Skutečný 3D Jarvis"/>;
+}
