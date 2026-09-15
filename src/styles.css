@@ -202,3 +202,40 @@
 @utility jarvis-ring-b {
   animation: jarvis-spin-reverse 26s linear infinite;
 }
+
+@keyframes jarvis-float {
+  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
+  50% { transform: translateY(-8px) rotate(0.6deg); }
+}
+
+@keyframes jarvis-float-slow {
+  0%, 100% { transform: translateY(0) rotate(-1.4deg); }
+  50% { transform: translateY(-4px) rotate(1.4deg); }
+}
+
+@keyframes jarvis-think {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
+}
+
+@keyframes jarvis-bounce {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-6px) scale(1.02); }
+  60% { transform: translateY(2px) scale(0.99); }
+}
+
+@utility jarvis-float {
+  animation: jarvis-float 5.5s ease-in-out infinite;
+}
+
+@utility jarvis-float-slow {
+  animation: jarvis-float-slow 9s ease-in-out infinite;
+}
+
+@utility jarvis-think {
+  animation: jarvis-think 1.4s ease-in-out infinite;
+}
+
+@utility jarvis-bounce {
+  animation: jarvis-bounce 1.6s ease-in-out infinite;
+}
