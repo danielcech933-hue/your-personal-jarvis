@@ -8,17 +8,7 @@ import { JarvisCompanion } from "@/components/JarvisCompanion";
 import type { AvatarMood } from "@/components/JarvisCompanion";
 import { createRecognition, speak, type SpeakHandle } from "@/lib/speech";
 
-export const Route = createFileRoute("/")({
-  head: () => ({ meta: [
-    { title: "JARVIS – Živý 3D asistent" },
-    { name: "description", content: "Živý hlasový JARVIS s autonomním 3D společníkem." },
-    { property: "og:title", content: "JARVIS – Živý 3D asistent" },
-    { property: "og:description", content: "Autonomní 3D digitální společník s hlasem a AI." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary_large_image" },
-  ] }),
-  component: JarvisPage,
-});
+export const Route = createFileRoute("/")({ head: () => ({ meta: [{ title: "JARVIS – Živý 3D asistent" }, { name: "description", content: "Živý hlasový JARVIS s autonomním 3D společníkem." }, { property: "og:title", content: "JARVIS – Živý 3D asistent" }, { property: "og:description", content: "Autonomní 3D digitální společník s hlasem a AI." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }), component: JarvisPage });
 
 type Note = { id: string; text: string };
 const NOTES_KEY = "jarvis.notes";
