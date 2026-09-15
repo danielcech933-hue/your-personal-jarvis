@@ -4,7 +4,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Mic, MicOff, Send, Square, Trash2, Volume2, VolumeX } from "lucide-react";
-import { JarvisOrb } from "@/components/JarvisOrb";
+import { JarvisAvatar } from "@/components/JarvisAvatar";
 import { createRecognition, speak, type SpeakHandle } from "@/lib/speech";
 
 export const Route = createFileRoute("/")({
@@ -262,7 +262,7 @@ function JarvisPage() {
 
       <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
         <aside className="jarvis-panel flex flex-col items-center gap-6 p-6">
-          <JarvisOrb state={orbState as any} level={level} />
+          <JarvisAvatar state={orbState as any} level={level} />
 
           <div className="flex w-full flex-col gap-2">
             <button
