@@ -70,9 +70,19 @@ export async function loadPrivateMemories(session: AuthSession) {
   return await res.json() as { id: string; memory: string; created_at: string }[];
 }
 
+export async function loadPrivateNotes(session: AuthSession) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/jarvis_notes?select=id,text,created_at&user_id=eq.${encodeURIComponent(session.user.id)}&order=created_at.asc&limit=200`, { headers: headers(session.access_token) });
+  if (!res.ok) throw new Error("Poznámky se nepodařilo načíst.");
+  return await res.json() as { id: string; text: string; created_at: string }[];
+}
+
 export async function replacePrivateNotes(session: AuthSession, notes: { id: string; text: string }[]) {
-  await fetch(`${SUPABASE_URL}/rest/v1/jarvis_notes?user_id=eq.${encodeURIComponent(session.user.id)}`, { method: "DELETE", headers: headers(session.access_token) });
-  if (notes.length) await fetch(`${SUPABASE_URL}/rest/v1/jarvis_notes`, { method: "POST", headers: { ...headers(session.access_token), Prefer: "return=minimal" }, body: JSON.stringify(notes.map((n) => ({ user_id: session.user.id, text: n.text }))) });
+  const deleted = await fetch(`${SUPABASE_URL}/rest/v1/jarvis_notes?user_id=eq.${encodeURIComponent(session.user.id)}`, { method: "DELETE", headers: headers(session.access_token) });
+  if (!deleted.ok) throw new Error("Poznámky se nepodařilo aktualizovat.");
+  if (notes.length) {
+    const inserted = await fetch(`${SUPABASE_URL}/rest/v1/jarvis_notes`, { method: "POST", headers: { ...headers(session.access_token), Prefer: "return=minimal" }, body: JSON.stringify(notes.map((n) => ({ user_id: session.user.id, text: n.text }))) });
+    if (!inserted.ok) throw new Error("Poznámky se nepodařilo uložit.");
+  }
 }
 
 export { SUPABASE_URL, SUPABASE_KEY };
