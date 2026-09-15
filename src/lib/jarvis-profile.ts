@@ -3,27 +3,51 @@ export type JarvisAppearance = { style: "glamorous" | "cyber" | "casual"; hair: 
 export type JarvisProfile = { characterName: string; userName: string; memories: JarvisMemory[]; favoriteTopics: string[]; conversationStyle: "friendly" | "professional" | "playful" | "concise"; appearance: JarvisAppearance };
 
 const AUTH_KEY = "jarvis.auth.v1";
+const LEGACY_PROFILE_KEY = "jarvis.profile.v1";
 const DEFAULT_APPEARANCE: JarvisAppearance = { style: "glamorous", hair: "silver", outfit: "midnight", accent: "cyan", height: 1, body: "athletic" };
 export const DEFAULT_PROFILE: JarvisProfile = { characterName: "Jarvis", userName: "", memories: [], favoriteTopics: [], conversationStyle: "friendly", appearance: DEFAULT_APPEARANCE };
 
-function storageKey() {
-  if (typeof window === "undefined") return "jarvis.profile.anonymous";
-  try { const session = JSON.parse(localStorage.getItem(AUTH_KEY) || "null") as { user?: { id?: string } } | null; return session?.user?.id ? `jarvis.profile.${session.user.id}` : "jarvis.profile.anonymous"; } catch { return "jarvis.profile.anonymous"; }
+export function getCurrentUserId() {
+  if (typeof window === "undefined") return null;
+  try {
+    const session = JSON.parse(localStorage.getItem(AUTH_KEY) || "null") as { user?: { id?: string } } | null;
+    return session?.user?.id || null;
+  } catch {
+    return null;
+  }
+}
+
+export function profileStorageKey(userId = getCurrentUserId()) {
+  return userId ? `jarvis.profile.${userId}` : "jarvis.profile.anonymous";
 }
 
 export function loadJarvisProfile(): JarvisProfile {
   if (typeof window === "undefined") return DEFAULT_PROFILE;
   try {
-    const parsed = JSON.parse(localStorage.getItem(storageKey()) || "null") as Partial<JarvisProfile> | null;
+    const scopedKey = profileStorageKey();
+    let raw = localStorage.getItem(scopedKey);
+    if (!raw && getCurrentUserId()) {
+      raw = localStorage.getItem(LEGACY_PROFILE_KEY);
+      if (raw) localStorage.setItem(scopedKey, raw);
+    }
+    const parsed = JSON.parse(raw || "null") as Partial<JarvisProfile> | null;
     if (!parsed) return DEFAULT_PROFILE;
-    return { ...DEFAULT_PROFILE, ...parsed, memories: Array.isArray(parsed.memories) ? parsed.memories : [], favoriteTopics: Array.isArray(parsed.favoriteTopics) ? parsed.favoriteTopics : [], appearance: { ...DEFAULT_APPEARANCE, ...(parsed.appearance || {}) } };
-  } catch { return DEFAULT_PROFILE; }
+    return {
+      ...DEFAULT_PROFILE,
+      ...parsed,
+      memories: Array.isArray(parsed.memories) ? parsed.memories : [],
+      favoriteTopics: Array.isArray(parsed.favoriteTopics) ? parsed.favoriteTopics : [],
+      appearance: { ...DEFAULT_APPEARANCE, ...(parsed.appearance || {}) },
+    };
+  } catch {
+    return DEFAULT_PROFILE;
+  }
 }
 
 export function saveJarvisProfile(profile: JarvisProfile) {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(storageKey(), JSON.stringify(profile));
+    localStorage.setItem(profileStorageKey(), JSON.stringify(profile));
     window.dispatchEvent(new CustomEvent("jarvis-profile-updated"));
     const session = JSON.parse(localStorage.getItem(AUTH_KEY) || "null") as { access_token?: string; user?: { id?: string } } | null;
     if (session?.access_token && session.user?.id) {
