@@ -2,82 +2,40 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import {
-  Activity,
-  BedDouble,
-  Brain,
-  Check,
-  ChevronRight,
-  Clock3,
-  Coffee,
-  Gamepad2,
-  Globe2,
-  Headphones,
-  MessageCircle,
-  Mic,
-  MicOff,
-  Moon,
-  Music2,
-  PanelRight,
-  Send,
-  Settings2,
-  Sparkles,
-  Trash2,
-  Volume2,
-  VolumeX,
-  Waves,
+  Activity, Check, ChevronRight, Clock3, Coffee, Gamepad2, Globe2, Headphones, MessageCircle, Mic, MicOff, Moon, Music2,
+  PanelRight, Send, Settings2, Sparkles, Trash2, Volume2, VolumeX, Waves,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { CharacterCreator } from "@/components/CharacterCreator";
 import { JarvisCompanion } from "@/components/JarvisCompanion";
 import type { AvatarMood } from "@/components/JarvisCompanion";
 import { createRecognition, speak, type SpeakHandle } from "@/lib/speech";
-import {
-  addJarvisMemory,
-  DEFAULT_PROFILE,
-  loadJarvisProfile,
-  removeJarvisMemory,
-  saveJarvisProfile,
-  stripWakeWord,
-  type JarvisProfile,
-} from "@/lib/jarvis-profile";
+import { ensureSession, loadPrivateNotes, replacePrivateNotes } from "@/lib/supabase-rest";
+import { addJarvisMemory, DEFAULT_PROFILE, loadJarvisProfile, removeJarvisMemory, saveJarvisProfile, stripWakeWord, type JarvisProfile } from "@/lib/jarvis-profile";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "JARVIS – Desktop Companion" },
-      { name: "description", content: "Živý autonomní 3D osobní společník." },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "JARVIS – Desktop Companion" }, { name: "description", content: "Živý autonomní 3D osobní společník." }] }),
   component: JarvisPage,
 });
 
 type Note = { id: string; text: string };
-const NOTES_KEY = "jarvis.notes";
-const IDLE_QUESTIONS = [
-  "Jak se dnes máš?",
-  "Na čem teď pracuješ?",
-  "Mám ti s něčím pomoct?",
-  "Je něco, co bych si měl zapamatovat?",
-  "Nechceš chvíli jen tak pokecat?",
-];
+const LEGACY_NOTES_KEY = "jarvis.notes";
+const IDLE_QUESTIONS = ["Jak se dnes máš?", "Na čem teď pracuješ?", "Mám ti s něčím pomoct?", "Je něco, co bych si měl zapamatovat?", "Nechceš chvíli jen tak pokecat?"];
 const TASKS = [
   { text: "Projít dnešní úkoly", done: true },
   { text: "Dokončit Roblox projekt", done: false },
   { text: "Projít trhy", done: false },
   { text: "Večer si pustit anime", done: false },
 ];
-
-function textOf(message: UIMessage) {
-  return message.parts
-    .map((part) => (part.type === "text" ? part.text : ""))
-    .join("")
-    .trim();
-}
+function textOf(message: UIMessage) { return message.parts.map((part) => (part.type === "text" ? part.text : "")).join("").trim(); }
 
 function JarvisPage() {
   const [profile, setProfile] = useState<JarvisProfile>(DEFAULT_PROFILE);
   const [notes, setNotes] = useState<Note[]>([]);
   const notesRef = useRef<Note[]>([]);
+  const sessionRef = useRef<Awaited<ReturnType<typeof ensureSession>>>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [voiceOn, setVoiceOn] = useState(true);
   const [listening, setListening] = useState(false);
@@ -102,18 +60,32 @@ function JarvisPage() {
   const appliedToolsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    setProfile(loadJarvisProfile());
-    try {
-      const stored = localStorage.getItem(NOTES_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as Note[];
-        setNotes(parsed);
-        notesRef.current = parsed;
+    void (async () => {
+      const session = await ensureSession();
+      sessionRef.current = session;
+      setUserId(session?.user.id || null);
+      setProfile(loadJarvisProfile());
+      try {
+        if (session) {
+          const remote = await loadPrivateNotes(session);
+          const next = remote.map((note) => ({ id: note.id, text: note.text }));
+          notesRef.current = next;
+          setNotes(next);
+          localStorage.setItem(`jarvis.notes.${session.user.id}`, JSON.stringify(next));
+        } else {
+          localStorage.removeItem(LEGACY_NOTES_KEY);
+        }
+      } catch {
+        const scopedKey = session ? `jarvis.notes.${session.user.id}` : "jarvis.notes.anonymous";
+        try {
+          const raw = localStorage.getItem(scopedKey);
+          const parsed = raw ? JSON.parse(raw) as Note[] : [];
+          setNotes(parsed);
+          notesRef.current = Array.isArray(parsed) ? parsed : [];
+        } catch { /* local storage can be unavailable */ }
       }
-    } catch {
-      // local storage can be unavailable in private browsing
-    }
-    setMicSupported(Boolean(createRecognition()));
+      setMicSupported(Boolean(createRecognition()));
+    })();
   }, []);
 
   useEffect(() => {
@@ -121,282 +93,103 @@ function JarvisPage() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const updateProfile = useCallback((next: JarvisProfile) => {
-    setProfile(next);
-    saveJarvisProfile(next);
+  useEffect(() => {
+    const syncProfile = () => setProfile(loadJarvisProfile());
+    window.addEventListener("jarvis-profile-updated", syncProfile);
+    return () => window.removeEventListener("jarvis-profile-updated", syncProfile);
   }, []);
 
+  const updateProfile = useCallback((next: JarvisProfile) => { setProfile(next); saveJarvisProfile(next); }, []);
   const persistNotes = useCallback((next: Note[]) => {
     notesRef.current = next;
     setNotes(next);
-    try {
-      localStorage.setItem(NOTES_KEY, JSON.stringify(next));
-    } catch {
-      // best effort only
-    }
-  }, []);
+    const key = userId ? `jarvis.notes.${userId}` : "jarvis.notes.anonymous";
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch { /* best effort */ }
+    const session = sessionRef.current;
+    if (session) void replacePrivateNotes(session, next).catch((err) => setError(err instanceof Error ? err.message : "Poznámky se nepodařilo uložit."));
+  }, [userId]);
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport<UIMessage>({
-        api: "/api/chat",
-        prepareSendMessagesRequest: ({ messages }) => ({
-          body: { messages, notes: notesRef.current, profile },
-        }),
-      }),
-    [profile],
-  );
-
-  const stopSpeaking = useCallback(() => {
-    speakRef.current?.stop();
-    speakRef.current = null;
-    setSpeaking(false);
-    setLevel(0);
-  }, []);
-
-  const submit = useCallback(
-    (text: string) => {
-      const value = text.trim();
-      if (!value) return;
-      setError(null);
-      lastActivityRef.current = Date.now();
-      setMood("normal");
-      stopSpeaking();
-      void sendMessage({ text: value });
-    },
-    [stopSpeaking],
-  );
+  const transport = useMemo(() => new DefaultChatTransport<UIMessage>({ api: "/api/chat", prepareSendMessagesRequest: ({ messages }) => ({ body: { messages } }) }), []);
+  const stopSpeaking = useCallback(() => { speakRef.current?.stop(); speakRef.current = null; setSpeaking(false); setLevel(0); }, []);
+  const submit = useCallback((text: string) => { const value = text.trim(); if (!value) return; setError(null); lastActivityRef.current = Date.now(); setMood("normal"); stopSpeaking(); void sendMessage({ text: value }); }, [stopSpeaking]);
 
   const startRecognition = useCallback(() => {
     if (!wantListeningRef.current || recognitionRef.current) return;
     const recognition = createRecognition("cs-CZ");
-    if (!recognition) {
-      setMicSupported(false);
-      return;
-    }
+    if (!recognition) { setMicSupported(false); return; }
     recognitionRef.current = recognition;
     recognition.onresult = (event: any) => {
-      let finalText = "";
-      let partial = "";
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        if (result.isFinal) finalText += result[0].transcript;
-        else partial += result[0].transcript;
-      }
-      setInterim(partial);
-      if (!finalText.trim()) return;
-      setInterim("");
+      let finalText = ""; let partial = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) { const result = event.results[i]; if (result.isFinal) finalText += result[0].transcript; else partial += result[0].transcript; }
+      setInterim(partial); if (!finalText.trim()) return; setInterim("");
       const wake = stripWakeWord(finalText, profile.characterName || "Jarvis");
       if (wakeMode && !wake.heard) return;
-      if (wakeMode && !wake.command) {
-        setMood("curious");
-        setActivity("Slyšela jsem svoje jméno");
-        if (voiceOn) {
-          setSpeaking(true);
-          const handle = speak("Ano?", setLevel);
-          speakRef.current = handle;
-          handle.done.finally(() => {
-            speakRef.current = null;
-            setSpeaking(false);
-            setLevel(0);
-          });
-        }
-        return;
-      }
+      if (wakeMode && !wake.command) { setMood("curious"); setActivity("Slyšela jsem svoje jméno"); if (voiceOn) { setSpeaking(true); const handle = speak("Ano?", setLevel); speakRef.current = handle; handle.done.finally(() => { speakRef.current = null; setSpeaking(false); setLevel(0); }); } return; }
       submit(wakeMode ? wake.command : finalText);
     };
     recognition.onerror = () => undefined;
-    recognition.onend = () => {
-      recognitionRef.current = null;
-      setWakeArmed(false);
-      if (wantListeningRef.current) window.setTimeout(startRecognition, 200);
-    };
-    try {
-      recognition.start();
-      setWakeArmed(wakeMode);
-    } catch {
-      recognitionRef.current = null;
-    }
+    recognition.onend = () => { recognitionRef.current = null; setWakeArmed(false); if (wantListeningRef.current) window.setTimeout(startRecognition, 200); };
+    try { recognition.start(); setWakeArmed(wakeMode); } catch { recognitionRef.current = null; }
   }, [profile.characterName, submit, voiceOn, wakeMode]);
 
   const pauseRecognition = useCallback(() => {
-    const recognition = recognitionRef.current;
-    recognitionRef.current = null;
-    if (recognition) {
-      recognition.onend = null;
-      try {
-        recognition.abort();
-      } catch {
-        // ignore abort races
-      }
-    }
+    const recognition = recognitionRef.current; recognitionRef.current = null;
+    if (recognition) { recognition.onend = null; try { recognition.abort(); } catch { /* ignore */ } }
     setWakeArmed(false);
   }, []);
 
-  const applyToolEffects = useCallback(
-    (message: UIMessage) => {
-      let next = [...notesRef.current];
-      let changed = false;
-      for (const part of message.parts as any[]) {
-        const key = part.toolCallId as string | undefined;
-        if (!key || appliedToolsRef.current.has(key)) continue;
-        if (part.type === "tool-save_note" && part.input?.text) {
-          appliedToolsRef.current.add(key);
-          next = [
-            ...next,
-            { id: crypto.randomUUID().slice(0, 8), text: part.input.text },
-          ];
-          changed = true;
-        }
-        if (part.type === "tool-delete_note" && part.input?.id) {
-          appliedToolsRef.current.add(key);
-          next = next.filter((note) => note.id !== part.input.id);
-          changed = true;
-        }
-      }
-      if (changed) persistNotes(next);
-    },
-    [persistNotes],
-  );
+  const applyToolEffects = useCallback((message: UIMessage) => {
+    let next = [...notesRef.current]; let changed = false;
+    for (const part of message.parts as any[]) {
+      const key = part.toolCallId as string | undefined; if (!key || appliedToolsRef.current.has(key)) continue;
+      if (part.type === "tool-save_note" && part.input?.text) { appliedToolsRef.current.add(key); next = [...next, { id: crypto.randomUUID(), text: part.input.text }]; changed = true; }
+      if (part.type === "tool-delete_note" && part.input?.id) { appliedToolsRef.current.add(key); next = next.filter((note) => note.id !== part.input.id); changed = true; }
+    }
+    if (changed) persistNotes(next);
+  }, [persistNotes]);
 
-  const { messages, sendMessage, status, stop, setMessages } = useChat<UIMessage>({
+  const { messages, sendMessage, status, setMessages } = useChat<UIMessage>({
     transport,
     onError: (err) => setError(err.message || "Něco se pokazilo."),
     onFinish: ({ message }) => {
-      applyToolEffects(message);
-      const reply = textOf(message);
-      if (voiceOn && reply) {
-        pauseRecognition();
-        setSpeaking(true);
-        setActivity("Mluvím s tebou");
-        const handle = speak(reply, setLevel);
-        speakRef.current = handle;
-        handle.done.finally(() => {
-          speakRef.current = null;
-          setSpeaking(false);
-          setLevel(0);
-          startRecognition();
-        });
-      } else {
-        setActivity("Čekám, co vymyslíš");
-        startRecognition();
-      }
+      applyToolEffects(message); const reply = textOf(message);
+      if (voiceOn && reply) { pauseRecognition(); setSpeaking(true); setActivity("Mluvím s tebou"); const handle = speak(reply, setLevel); speakRef.current = handle; handle.done.finally(() => { speakRef.current = null; setSpeaking(false); setLevel(0); startRecognition(); }); }
+      else { setActivity("Čekám, co vymyslíš"); startRecognition(); }
     },
   });
-
   const busy = status === "submitted" || status === "streaming";
 
-  const askCompanion = useCallback(
-    (question: string) => {
-      if (busy || speaking || listening) return;
-      const prompt =
-        question || IDLE_QUESTIONS[Math.floor(Math.random() * IDLE_QUESTIONS.length)];
-      setMood("curious");
-      setActivity("Ptám se, protože je tu moc ticho");
-      lastActivityRef.current = Date.now();
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          parts: [{ type: "text", text: prompt }],
-        } as UIMessage,
-      ]);
-      if (voiceOn) {
-        setSpeaking(true);
-        const handle = speak(prompt, setLevel);
-        speakRef.current = handle;
-        handle.done.finally(() => {
-          speakRef.current = null;
-          setSpeaking(false);
-          setLevel(0);
-          startRecognition();
-        });
-      }
-    },
-    [busy, listening, setMessages, speaking, startRecognition, voiceOn],
-  );
+  const askCompanion = useCallback((question: string) => {
+    if (busy || speaking || listening) return;
+    const prompt = question || IDLE_QUESTIONS[Math.floor(Math.random() * IDLE_QUESTIONS.length)];
+    setMood("curious"); setActivity("Ptám se, protože je tu moc ticho"); lastActivityRef.current = Date.now();
+    setMessages((current) => [...current, { id: crypto.randomUUID(), role: "assistant", parts: [{ type: "text", text: prompt }] } as UIMessage]);
+    if (voiceOn) { setSpeaking(true); const handle = speak(prompt, setLevel); speakRef.current = handle; handle.done.finally(() => { speakRef.current = null; setSpeaking(false); setLevel(0); startRecognition(); }); }
+  }, [busy, listening, setMessages, speaking, startRecognition, voiceOn]);
 
   const toggleListening = useCallback(async () => {
-    if (listening) {
-      wantListeningRef.current = false;
-      pauseRecognition();
-      setListening(false);
-      setInterim("");
-      setActivity("Odpočívám");
-      return;
-    }
-    try {
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-    } catch {
-      setError("Potřebuju přístup k mikrofonu, jinak tě neuslyším.");
-      return;
-    }
-    wantListeningRef.current = true;
-    setListening(true);
-    setMood("normal");
-    setActivity(wakeMode ? `Čekám na „${profile.characterName || "Jarvis"}“` : "Poslouchám tě");
-    startRecognition();
+    if (listening) { wantListeningRef.current = false; pauseRecognition(); setListening(false); setInterim(""); setActivity("Odpočívám"); return; }
+    try { await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { setError("Potřebuju přístup k mikrofonu, jinak tě neuslyším."); return; }
+    wantListeningRef.current = true; setListening(true); setMood("normal"); setActivity(wakeMode ? `Čekám na „${profile.characterName || "Jarvis"}“` : "Poslouchám tě"); startRecognition();
   }, [listening, pauseRecognition, profile.characterName, startRecognition, wakeMode]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (busy || speaking || listening) return;
-      const idleFor = Date.now() - lastActivityRef.current;
-      if (idleFor > 12000 && idleFor < 45000) {
-        setMood("bored");
-        setActivity("Začíná se nudit a hledá si něco na práci");
-      } else if (idleFor >= 45000) {
-        setMood("sleep");
-        setActivity("Usínám na gauči");
-      } else {
-        setMood("normal");
-      }
-    }, 3000);
+    const timer = window.setInterval(() => { if (busy || speaking || listening) return; const idleFor = Date.now() - lastActivityRef.current; if (idleFor > 12000 && idleFor < 45000) { setMood("bored"); setActivity("Začíná se nudit a hledá si něco na práci"); } else if (idleFor >= 45000) { setMood("sleep"); setActivity("Usínám na gauči"); } else setMood("normal"); }, 3000);
     return () => window.clearInterval(timer);
   }, [busy, listening, speaking]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      const idleFor = Date.now() - lastActivityRef.current;
-      if (
-        idleFor < 35000 ||
-        busy ||
-        speaking ||
-        listening ||
-        Date.now() - lastQuestionRef.current < 120000
-      ) {
-        return;
-      }
-      lastQuestionRef.current = Date.now();
-      askCompanion("");
-    }, 5000);
+    const timer = window.setInterval(() => { const idleFor = Date.now() - lastActivityRef.current; if (idleFor < 35000 || busy || speaking || listening || Date.now() - lastQuestionRef.current < 120000) return; lastQuestionRef.current = Date.now(); askCompanion(""); }, 5000);
     return () => window.clearInterval(timer);
   }, [askCompanion, busy, listening, speaking]);
 
   useEffect(() => {
-    const onActivity = () => {
-      lastActivityRef.current = Date.now();
-      if (!busy && !speaking) setMood("normal");
-    };
-    window.addEventListener("keydown", onActivity);
-    window.addEventListener("pointerdown", onActivity);
-    window.addEventListener("scroll", onActivity, { passive: true });
-    return () => {
-      window.removeEventListener("keydown", onActivity);
-      window.removeEventListener("pointerdown", onActivity);
-      window.removeEventListener("scroll", onActivity);
-    };
+    const onActivity = () => { lastActivityRef.current = Date.now(); if (!busy && !speaking) setMood("normal"); };
+    window.addEventListener("keydown", onActivity); window.addEventListener("pointerdown", onActivity); window.addEventListener("scroll", onActivity, { passive: true });
+    return () => { window.removeEventListener("keydown", onActivity); window.removeEventListener("pointerdown", onActivity); window.removeEventListener("scroll", onActivity); };
   }, [busy, speaking]);
 
-  useEffect(
-    () => () => {
-      wantListeningRef.current = false;
-      pauseRecognition();
-      speakRef.current?.stop();
-    },
-    [pauseRecognition],
-  );
+  useEffect(() => () => { wantListeningRef.current = false; pauseRecognition(); speakRef.current?.stop(); }, [pauseRecognition]);
 
   const companionState = speaking ? "speaking" : busy ? "thinking" : listening ? "listening" : "idle";
   const saveMemory = (text: string) => updateProfile(addJarvisMemory(profile, text));
@@ -407,60 +200,16 @@ function JarvisPage() {
   return (
     <div className="jarvis-desktop">
       <JarvisCompanion state={companionState} mood={mood} level={level} onAsk={askCompanion} />
-
       <div className="jarvis-desktop-shade" />
-      <div className="jarvis-window-bar">
-        <div className="jarvis-brand"><span className="jarvis-brand-orb">✦</span><span>{displayName}</span><span className="jarvis-online"><span /> Online</span></div>
-        <div className="jarvis-window-actions"><button onClick={() => setShowChat((v) => !v)} aria-label="Chat"><MessageCircle /></button><button onClick={() => setShowSettings((v) => !v)} aria-label="Nastavení"><Settings2 /></button></div>
-      </div>
-
-      <aside className="jarvis-left-rail">
-        <button className="jarvis-rail-app active"><Sparkles /><span>Domů</span></button>
-        <button className="jarvis-rail-app" onClick={() => setShowChat(true)}><MessageCircle /><span>Chat</span></button>
-        <button className="jarvis-rail-app" onClick={() => setShowMemory((v) => !v)}><Brain /><span>Paměť</span></button>
-        <button className="jarvis-rail-app"><Globe2 /><span>Web</span></button>
-        <button className="jarvis-rail-app"><Gamepad2 /><span>Zábava</span></button>
-      </aside>
-
-      <main className="jarvis-room">
-        <div className="jarvis-room-sky" />
-        <div className="jarvis-window-glow" />
-        <div className="jarvis-neon-sign">JARVIS <span>HOME</span></div>
-        <div className="jarvis-room-window"><div /><div /><div /></div>
-        <div className="jarvis-shelf shelf-left"><span>◈</span><span>◇</span><span>✦</span></div>
-        <div className="jarvis-plant plant-left"><span className="leaf l1" /><span className="leaf l2" /><span className="leaf l3" /><b /></div>
-        <div className="jarvis-desk"><div className="monitor" /><div className="keyboard" /><div className="coffee-cup"><Coffee /></div></div>
-        <div className="jarvis-sofa"><div className="sofa-back" /><div className="sofa-seat" /><div className="sofa-arm" /></div>
-        <div className="jarvis-floor-grid" />
-        <div className="jarvis-companion-bubble"><span className="bubble-dot" />{activity}</div>
-        <div className="jarvis-presence-card"><div className="presence-avatar">✦</div><div><strong>{displayName}</strong><span>{mood === "sleep" ? "Spí" : mood === "bored" ? "Nudí se" : mood === "curious" ? "Zvědavá" : "Klidná"}</span></div><Activity className="presence-activity" /></div>
-        <div className="jarvis-action-strip"><span><FootprintsIcon /> Chůze</span><span><Moon /> Spánek</span><span><Waves /> Reakce</span><span><Music2 /> Hudba</span></div>
-      </main>
-
-      <aside className="jarvis-right-panel">
-        <section className="jarvis-widget clock-widget"><div className="widget-kicker"><Clock3 /> Dnes</div><strong>{clock}</strong><span>{date}</span><small>17 °C · Praha</small></section>
-        <section className="jarvis-widget"><div className="widget-title"><span>STAV SYSTÉMU</span><span className="system-dot">● Online</span></div><div className="status-line"><span>Hlasová komunikace</span><Check /></div><div className="status-line"><span>Autonomní pohyb</span><Check /></div><div className="status-line"><span>Osobní paměť</span><Check /></div><div className="status-line"><span>Proaktivní režim</span><Check /></div></section>
-        <section className="jarvis-widget"><div className="widget-title"><span>MOOD</span><span>{mood === "sleep" ? "Spánek" : mood === "bored" ? "Nuda" : mood === "curious" ? "Zvědavost" : "Klid"}</span></div><div className="mood-meter"><div style={{ width: `${mood === "play" ? 88 : mood === "curious" ? 74 : mood === "bored" ? 42 : mood === "sleep" ? 18 : 62}%` }} /></div><p>{activity}</p></section>
-        <section className="jarvis-widget"><div className="widget-title"><span>DNEŠNÍ ÚKOLY</span><span>4</span></div>{TASKS.map((task) => <div key={task.text} className="task-line"><span className={task.done ? "task-check done" : "task-check"}>{task.done ? "✓" : ""}</span><span>{task.text}</span></div>)}</section>
-        <section className="jarvis-widget mini-player"><div><Headphones /><span><b>Poslouchám</b><small>Tvůj playlist</small></span></div><div className="player-bars"><i /><i /><i /><i /><i /></div></section>
-      </aside>
-
-      {showChat && <section className="jarvis-chat-window">
-        <div className="chat-window-head"><div><span className="jarvis-label">SPOLEČNÍK</span><strong>{displayName}</strong></div><button onClick={() => setShowChat(false)}><PanelRight /></button></div>
-        <div className="chat-scroll">{messages.length === 0 && <div className="chat-empty"><Sparkles /><p>Řekni <b>„{displayName}, jak se máš?“</b></p><span>Postava žije i mimo tenhle chat. Prochází se, odpočívá a reaguje na to, co děláš.</span></div>}{messages.map((message) => <div key={message.id} className={`chat-message ${message.role === "user" ? "user" : "assistant"}`}><span className="chat-author">{message.role === "user" ? (profile.userName || "Ty") : displayName}</span>{message.parts.map((part: any, index) => part.type === "text" ? <div className="chat-bubble" key={index}><ReactMarkdown>{part.text}</ReactMarkdown></div> : null)}</div>)}{interim && <div className="chat-interim">{interim}</div>}</div>
-        <form className="chat-input" onSubmit={(event) => { event.preventDefault(); submit(input); setInput(""); }}><button type="button" className={listening ? "mic live" : "mic"} onClick={toggleListening} disabled={!micSupported}>{listening ? <MicOff /> : <Mic />}</button><input value={input} onChange={(event) => setInput(event.target.value)} placeholder={`Napiš ${displayName}…`} /><button type="submit" disabled={busy || !input.trim()} className="send"><Send /></button></form>
-        {error && <div className="chat-error">{error}</div>}
-      </section>}
-
-      {showSettings && <section className="jarvis-popover jarvis-settings-popover"><div className="popover-title"><strong>Nastavení postavy</strong><button onClick={() => setShowSettings(false)}>×</button></div><label>Jméno postavy<input value={profile.characterName} onChange={(e) => updateProfile({ ...profile, characterName: e.target.value || "Jarvis" })} /></label><label>Tvoje jméno<input value={profile.userName} onChange={(e) => updateProfile({ ...profile, userName: e.target.value })} /></label><label>Styl komunikace<select value={profile.conversationStyle} onChange={(e) => updateProfile({ ...profile, conversationStyle: e.target.value as JarvisProfile["conversationStyle"] })}><option value="friendly">Přátelský</option><option value="professional">Profesionální</option><option value="playful">Hravý</option><option value="concise">Stručný</option></select></label><div className="popover-row"><button onClick={() => { setWakeMode((v) => !v); }}><Brain /> {wakeMode ? "Wake name zapnutý" : "Wake name vypnutý"}</button><button onClick={() => { setVoiceOn((v) => !v); stopSpeaking(); }}>{voiceOn ? <Volume2 /> : <VolumeX />} {voiceOn ? "Hlas" : "Hlas vyp."}</button></div></section>}
-
+      <div className="jarvis-window-bar"><div className="jarvis-brand"><span className="jarvis-brand-orb">✦</span><span>{displayName}</span><span className="jarvis-online"><span /> Online</span></div><div className="jarvis-window-actions"><button onClick={() => setShowChat((v) => !v)} aria-label="Chat"><MessageCircle /></button><button onClick={() => setShowSettings((v) => !v)} aria-label="Nastavení"><Settings2 /></button></div></div>
+      <aside className="jarvis-left-rail"><button className="jarvis-rail-app active"><Sparkles /><span>Domů</span></button><button className="jarvis-rail-app" onClick={() => setShowChat(true)}><MessageCircle /><span>Chat</span></button><button className="jarvis-rail-app" onClick={() => setShowMemory((v) => !v)}><Brain /><span>Paměť</span></button><button className="jarvis-rail-app"><Globe2 /><span>Web</span></button><button className="jarvis-rail-app"><Gamepad2 /><span>Zábava</span></button></aside>
+      <main className="jarvis-room"><div className="jarvis-room-sky" /><div className="jarvis-window-glow" /><div className="jarvis-neon-sign">JARVIS <span>HOME</span></div><div className="jarvis-room-window"><div /><div /><div /></div><div className="jarvis-shelf shelf-left"><span>◈</span><span>◇</span><span>✦</span></div><div className="jarvis-plant plant-left"><span className="leaf l1" /><span className="leaf l2" /><span className="leaf l3" /><b /></div><div className="jarvis-desk"><div className="monitor" /><div className="keyboard" /><div className="coffee-cup"><Coffee /></div></div><div className="jarvis-sofa"><div className="sofa-back" /><div className="sofa-seat" /><div className="sofa-arm" /></div><div className="jarvis-floor-grid" /><div className="jarvis-companion-bubble"><span className="bubble-dot" />{activity}</div><div className="jarvis-presence-card"><div className="presence-avatar">✦</div><div><strong>{displayName}</strong><span>{mood === "sleep" ? "Spí" : mood === "bored" ? "Nudí se" : mood === "curious" ? "Zvědavá" : "Klidná"}</span></div><Activity className="presence-activity" /></div><div className="jarvis-action-strip"><span><FootprintsIcon /> Chůze</span><span><Moon /> Spánek</span><span><Waves /> Reakce</span><span><Music2 /> Hudba</span></div></main>
+      <aside className="jarvis-right-panel"><section className="jarvis-widget clock-widget"><div className="widget-kicker"><Clock3 /> Dnes</div><strong>{clock}</strong><span>{date}</span><small>17 °C · Praha</small></section><section className="jarvis-widget"><div className="widget-title"><span>STAV SYSTÉMU</span><span className="system-dot">● Online</span></div><div className="status-line"><span>Hlasová komunikace</span><Check /></div><div className="status-line"><span>Autonomní pohyb</span><Check /></div><div className="status-line"><span>Osobní paměť</span><Check /></div><div className="status-line"><span>Proaktivní režim</span><Check /></div></section><section className="jarvis-widget"><div className="widget-title"><span>MOOD</span><span>{mood === "sleep" ? "Spánek" : mood === "bored" ? "Nuda" : mood === "curious" ? "Zvědavost" : "Klid"}</span></div><div className="mood-meter"><div style={{ width: `${mood === "play" ? 88 : mood === "curious" ? 74 : mood === "bored" ? 42 : mood === "sleep" ? 18 : 62}%` }} /></div><p>{activity}</p></section><section className="jarvis-widget"><div className="widget-title"><span>DNEŠNÍ ÚKOLY</span><span>4</span></div>{TASKS.map((task) => <div key={task.text} className="task-line"><span className={task.done ? "task-check done" : "task-check"}>{task.done ? "✓" : ""}</span><span>{task.text}</span></div>)}</section><section className="jarvis-widget mini-player"><div><Headphones /><span><b>Poslouchám</b><small>Tvůj playlist</small></span></div><div className="player-bars"><i /><i /><i /><i /><i /></div></section></aside>
+      {showChat && <section className="jarvis-chat-window"><div className="chat-window-head"><div><span className="jarvis-label">SPOLEČNÍK</span><strong>{displayName}</strong></div><button onClick={() => setShowChat(false)}><PanelRight /></button></div><div className="chat-scroll">{messages.length === 0 && <div className="chat-empty"><Sparkles /><p>Řekni <b>„{displayName}, jak se máš?“</b></p><span>Postava žije i mimo tenhle chat. Prochází se, odpočívá a reaguje na to, co děláš.</span></div>}{messages.map((message) => <div key={message.id} className={`chat-message ${message.role === "user" ? "user" : "assistant"}`}><span className="chat-author">{message.role === "user" ? (profile.userName || "Ty") : displayName}</span>{message.parts.map((part: any, index) => part.type === "text" ? <div className="chat-bubble" key={index}><ReactMarkdown>{part.text}</ReactMarkdown></div> : null)}</div>)}{interim && <div className="chat-interim">{interim}</div>}</div><form className="chat-input" onSubmit={(event) => { event.preventDefault(); submit(input); setInput(""); }}><button type="button" className={listening ? "mic live" : "mic"} onClick={toggleListening} disabled={!micSupported}>{listening ? <MicOff /> : <Mic />}</button><input value={input} onChange={(event) => setInput(event.target.value)} placeholder={`Napiš ${displayName}…`} /><button type="submit" disabled={busy || !input.trim()} className="send"><Send /></button></form>{error && <div className="chat-error">{error}</div>}</section>}
+      {showSettings && <section className="jarvis-popover jarvis-settings-popover"><div className="popover-title"><strong>Osobnost & postava</strong><button onClick={() => setShowSettings(false)}>×</button></div><label>Jméno postavy<input value={profile.characterName} onChange={(e) => updateProfile({ ...profile, characterName: e.target.value || "Jarvis" })} /></label><label>Tvoje jméno<input value={profile.userName} onChange={(e) => updateProfile({ ...profile, userName: e.target.value })} /></label><label>Styl komunikace<select value={profile.conversationStyle} onChange={(e) => updateProfile({ ...profile, conversationStyle: e.target.value as JarvisProfile["conversationStyle"] })}><option value="friendly">Přátelský</option><option value="professional">Profesionální</option><option value="playful">Hravý</option><option value="concise">Stručný</option></select></label><CharacterCreator appearance={profile.appearance} onChange={(appearance) => updateProfile({ ...profile, appearance })} /><div className="popover-row"><button onClick={() => setWakeMode((v) => !v)}><MessageCircle /> {wakeMode ? "Wake name zapnutý" : "Wake name vypnutý"}</button><button onClick={() => { setVoiceOn((v) => !v); stopSpeaking(); }}>{voiceOn ? <Volume2 /> : <VolumeX />} {voiceOn ? "Hlas" : "Hlas vyp."}</button></div></section>}
       {showMemory && <section className="jarvis-popover jarvis-memory-popover"><div className="popover-title"><strong>Osobní paměť</strong><button onClick={() => setShowMemory(false)}>×</button></div><div className="memory-add"><input id="memory-input" placeholder="Co si má pamatovat…" /><button onClick={() => { const el = document.getElementById("memory-input") as HTMLInputElement | null; if (el?.value.trim()) { saveMemory(el.value.trim()); el.value = ""; } }}><Brain /></button></div>{profile.memories.length === 0 && <p className="memory-empty">Zatím si nic nepamatuju.</p>}{profile.memories.map((memory) => <div className="memory-line" key={memory.id}><span>{memory.text}</span><button onClick={() => updateProfile(removeJarvisMemory(profile, memory.id))}><Trash2 /></button></div>)}</section>}
-
       <footer className="jarvis-taskbar"><div className="taskbar-left"><span className="taskbar-logo">✦</span><span>{displayName}</span></div><div className="taskbar-center"><button onClick={() => setShowChat((v) => !v)}><MessageCircle /></button><button><Globe2 /></button><button><Music2 /></button></div><div className="taskbar-right"><span>{clock}</span><button className="taskbar-mic" onClick={toggleListening}>{listening ? <MicOff /> : <Mic />}</button></div></footer>
     </div>
   );
 }
-
-function FootprintsIcon() {
-  return <ChevronRight className="tiny-chevron" />;
-}
+function FootprintsIcon() { return <ChevronRight className="tiny-chevron" />; }
