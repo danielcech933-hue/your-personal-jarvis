@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { Activity, Check, ChevronRight, Clock3, Coffee, Gamepad2, Globe2, Headphones, MessageCircle, Mic, MicOff, Moon, Music2, PanelRight, Send, Settings2, Sparkles, Trash2, Volume2, VolumeX, Waves } from "lucide-react";
+import { Activity, Check, ChevronRight, Clock3, Coffee, Gamepad2, Globe2, Headphones, MessageCircle, Mic, MicOff, Moon, Music2, PanelRight, Send, Settings2, Sparkles, Trash2, Volume2, VolumeX, Waves, Brain } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { CharacterCreator } from "@/components/CharacterCreator";
@@ -46,7 +46,7 @@ function JarvisPage() {
 
   const companionState = speaking ? "speaking" : busy ? "thinking" : listening ? "listening" : "idle"; const saveMemory = (text: string) => updateProfile(addJarvisMemory(profile, text)); const displayName = profile.characterName || "Jarvis"; const clock = now.toLocaleTimeString("cs-CZ", { hour: "2-digit", minute: "2-digit" }); const date = now.toLocaleDateString("cs-CZ", { weekday: "long", day: "numeric", month: "long" });
   return <div className="jarvis-desktop">
-    <JarvisCompanion state={companionState} mood={mood} level={level} onAsk={askCompanion} />
+    <JarvisCompanion state={companionState} mood={mood} level={level} appearance={profile.appearance} onAsk={askCompanion} />
     <div className="jarvis-desktop-shade" />
     <div className="jarvis-window-bar"><div className="jarvis-brand"><span className="jarvis-brand-orb">✦</span><span>{displayName}</span><span className="jarvis-online"><span /> Online</span></div><div className="jarvis-window-actions"><button onClick={() => setShowChat((v) => !v)} aria-label="Chat"><MessageCircle /></button><button onClick={() => setShowSettings((v) => !v)} aria-label="Nastavení"><Settings2 /></button></div></div>
     <aside className="jarvis-left-rail"><button className="jarvis-rail-app active"><Sparkles /><span>Domů</span></button><button className="jarvis-rail-app" onClick={() => setShowChat(true)}><MessageCircle /><span>Chat</span></button><button className="jarvis-rail-app" onClick={() => setShowMemory((v) => !v)}><Brain /><span>Paměť</span></button><button className="jarvis-rail-app"><Globe2 /><span>Web</span></button><button className="jarvis-rail-app"><Gamepad2 /><span>Zábava</span></button></aside>
