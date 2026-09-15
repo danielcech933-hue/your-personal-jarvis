@@ -26,43 +26,88 @@ function pick<T>(items: T[], random: () => number) {
   return items[Math.floor(random() * items.length)] ?? items[0];
 }
 
+function routine(
+  zone: CompanionZone,
+  action: CompanionAction,
+  minMs: number,
+  maxMs: number,
+  reason: string,
+  random: () => number,
+): LifeDecision {
+  return {
+    zone,
+    action,
+    durationMs: minMs + random() * Math.max(0, maxMs - minMs),
+    reason,
+  };
+}
+
 export function decideCompanionLife(
   now: Date,
   mood: CompanionMood,
   random: () => number = Math.random,
 ): LifeDecision {
   const hour = now.getHours();
+  const day = now.getDay();
+  const weekend = day === 0 || day === 6;
 
   if (mood === "sleep" || hour >= 23 || hour < 7) {
-    return { zone: "sofa", action: "sleep", durationMs: 10000 + random() * 7000, reason: "noční odpočinek" };
+    return routine("sofa", "sleep", 10000, 17000, "noční odpočinek", random);
   }
 
   if (mood === "play") {
-    const zone = random() < 0.5 ? "floor" : "center";
+    const zone = random() < 0.55 ? "floor" : "center";
     const action = pick(["dance", "jump", "spin", "wave", "stretch", "flip"] as CompanionAction[], random);
-    return { zone, action, durationMs: 1800 + random() * 2800, reason: "chce se zabavit" };
+    return routine(zone, action, 1800, 5200, "chce se zabavit", random);
   }
 
   if (mood === "bored") {
     const zone = pick(["desk", "sofa", "window", "floor"] as CompanionZone[], random);
-    const action = zone === "desk" ? "work" : zone === "sofa" ? "sit" : zone === "window" ? "think" : "walk";
-    return { zone, action, durationMs: action === "work" ? 6000 + random() * 5000 : 2500 + random() * 3500, reason: "začíná se nudit" };
+    if (zone === "desk") return routine(zone, random() < 0.72 ? "work" : "think", 5000, 11000, "začíná se nudit a něco si hledá", random);
+    if (zone === "sofa") return routine(zone, random() < 0.8 ? "sit" : "stretch", 3000, 7000, "potřebuje pauzu", random);
+    if (zone === "window") return routine(zone, random() < 0.75 ? "think" : "wave", 3000, 6500, "kouká ven", random);
+    return routine(zone, "walk", 2500, 5500, "potřebuje změnu", random);
   }
 
   if (mood === "curious") {
     const zone = pick(["window", "center", "desk"] as CompanionZone[], random);
-    return { zone, action: pick(["walk", "think", "wave", "stretch"] as CompanionAction[], random), durationMs: 2200 + random() * 2600, reason: "je zvědavá" };
+    const action = zone === "window"
+      ? pick(["think", "wave", "stretch"] as CompanionAction[], random)
+      : zone === "desk"
+        ? pick(["think", "walk", "work"] as CompanionAction[], random)
+        : pick(["walk", "think", "wave"] as CompanionAction[], random);
+    return routine(zone, action, 2200, 6200, "něco ji zaujalo", random);
   }
 
-  if (hour >= 8 && hour <= 11) {
-    return { zone: "desk", action: "work", durationMs: 7000 + random() * 5000, reason: "ranní pracovní režim" };
+  if (hour >= 7 && hour <= 8) {
+    return weekend
+      ? routine("sofa", random() < 0.5 ? "stretch" : "sit", 3500, 7000, "víkendové ráno", random)
+      : routine("desk", "work", 6000, 10000, "začíná den", random);
   }
 
-  if (hour >= 12 && hour <= 17) {
-    const zone = random() < 0.55 ? "desk" : "window";
-    return { zone, action: zone === "desk" ? "work" : "think", durationMs: 5000 + random() * 5000, reason: "odpolední režim" };
+  if (hour >= 9 && hour <= 11) {
+    return routine("desk", random() < 0.78 ? "work" : "think", 7000, 13000, "ranní pracovní režim", random);
   }
 
-  const zone = pick(["sofa", "window", "center"] as CompanionZone[], random);
-  return { zone, action: zone === "sofa" ? "sit" : zone === "window" ? "think" : pick(["walk", "stretch", "idle", "wave"] as CompanionAction[], random), durationMs: 2500 + random() * 3500, reason: "večerní režim" };
+  if (hour >= 12 && hour <= 14) {
+    if (random() < 0.4) return routine("sofa", random() < 0.75 ? "sit" : "sleep", 3500, 7500, "polední pauza", random);
+    if (random() < 0.5) return routine("window", "think", 3500, 7000, "krátká pauza od práce", random);
+    return routine("desk", "work", 5000, 9000, "pokračuje v práci", random);
+  }
+
+  if (hour >= 15 && hour <= 17) {
+    const zone = random() < 0.58 ? "desk" : random() < 0.55 ? "window" : "floor";
+    const action = zone === "desk" ? "work" : zone === "window" ? "think" : "walk";
+    return routine(zone, action, 4500, 9500, "odpolední režim", random);
+  }
+
+  if (hour >= 18 && hour <= 22) {
+    const zone = pick(["sofa", "window", "center", "floor"] as CompanionZone[], random);
+    if (zone === "sofa") return routine(zone, random() < 0.82 ? "sit" : "stretch", 3500, 8000, "večerní odpočinek", random);
+    if (zone === "window") return routine(zone, random() < 0.7 ? "think" : "wave", 3000, 6500, "večer u okna", random);
+    if (zone === "floor") return routine(zone, random() < 0.65 ? "stretch" : "dance", 2500, 5500, "večerní volno", random);
+    return routine(zone, pick(["walk", "idle", "wave", "stretch"] as CompanionAction[], random), 2200, 5200, "má trochu volného času", random);
+  }
+
+  return routine("center", "idle", 2500, 5000, "klidný moment", random);
 }
