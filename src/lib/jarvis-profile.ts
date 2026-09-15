@@ -1,3 +1,5 @@
+import "@/components/jarvis-avatar.css";
+
 export type JarvisMemory = {
   id: string;
   text: string;
@@ -65,11 +67,7 @@ export function removeJarvisMemory(profile: JarvisProfile, id: string): JarvisPr
 }
 
 export function normalizeWakeWord(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 }
 
 export function stripWakeWord(transcript: string, characterName: string) {
