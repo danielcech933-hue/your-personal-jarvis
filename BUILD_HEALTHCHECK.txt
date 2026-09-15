@@ -1,0 +1,1 @@
+Build healthcheck marker: main inspected for feature-branch ancestry and VRM companion integration on 2026-09-15.
