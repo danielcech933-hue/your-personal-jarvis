@@ -5,7 +5,8 @@ import sleepImg from "@/assets/chibi-sleep.png";
 import boredImg from "@/assets/chibi-bored.png";
 import playImg from "@/assets/chibi-play.png";
 import curiousImg from "@/assets/chibi-curious.png";
-import type { AvatarMood, AvatarState } from "./JarvisAvatar";
+import type { AvatarMood, AvatarState } from "./JarvisCompanionTypes";
+export type { AvatarMood, AvatarState } from "./JarvisCompanionTypes";
 
 type Props = { state: AvatarState; mood: AvatarMood; level: number; onAsk?: (question: string) => void };
 type Point = { x: number; y: number };
