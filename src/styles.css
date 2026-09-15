@@ -4,20 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -45,7 +31,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ring-offset-background: var(--background);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -99,7 +84,6 @@
   --grid-line: oklch(0.82 0.16 195 / 8%);
 }
 
-
 .dark {
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
@@ -136,14 +120,8 @@
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
-
-  body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-  }
+  * { border-color: var(--color-border); }
+  body { background-color: var(--color-background); color: var(--color-foreground); }
 }
 
 @layer base {
@@ -152,90 +130,81 @@
       radial-gradient(circle at 50% -10%, oklch(0.82 0.16 195 / 12%), transparent 60%),
       linear-gradient(var(--grid-line) 1px, transparent 1px),
       linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
-    background-size:
-      100% 100%,
-      48px 48px,
-      48px 48px;
-    font-family:
-      "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background-size: 100% 100%, 48px 48px, 48px 48px;
+    font-family: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
 }
 
 @utility jarvis-panel {
-  background: linear-gradient(
-    160deg,
-    oklch(0.24 0.04 250 / 85%),
-    oklch(0.18 0.03 250 / 85%)
-  );
+  background: linear-gradient(160deg, oklch(0.24 0.04 250 / 85%), oklch(0.18 0.03 250 / 85%));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
   backdrop-filter: blur(12px);
 }
+@utility jarvis-glow { box-shadow: var(--glow); }
+@utility jarvis-label { font-size: 0.7rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-muted-foreground); }
 
-@utility jarvis-glow {
-  box-shadow: var(--glow);
+/* Autonomous full-screen companion */
+.jarvis-companion-layer {
+  position: fixed;
+  z-index: 80;
+  width: 190px;
+  height: 220px;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
 }
-
-@utility jarvis-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: var(--color-muted-foreground);
+.jarvis-companion-layer:active { cursor: grabbing; }
+.jarvis-companion { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
+.jarvis-companion-body {
+  position: relative;
+  width: 176px;
+  height: 176px;
+  transform-style: preserve-3d;
+  transition: transform 180ms ease-out;
+  animation: jarvis-companion-breathe 4.8s ease-in-out infinite;
+  filter: drop-shadow(0 22px 22px oklch(0 0 0 / 30%));
 }
-
-@keyframes jarvis-spin-slow {
-  to {
-    transform: rotate(360deg);
-  }
+.jarvis-companion-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  transition: transform 90ms ease-out;
 }
-
-@keyframes jarvis-spin-reverse {
-  to {
-    transform: rotate(-360deg);
-  }
+.jarvis-companion-aura {
+  position: absolute;
+  inset: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(0.82 0.16 195 / 18%), transparent 68%);
+  filter: blur(13px);
+  animation: jarvis-aura 3.7s ease-in-out infinite;
 }
-
-@utility jarvis-ring-a {
-  animation: jarvis-spin-slow 18s linear infinite;
+.jarvis-companion-shadow {
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  width: 92px;
+  height: 18px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: oklch(0 0 0 / 32%);
+  filter: blur(8px);
 }
+.jarvis-companion-playing .jarvis-companion-body { animation: jarvis-play-hop 0.9s ease-in-out infinite; }
+.jarvis-companion-sleeping .jarvis-companion-body { animation: jarvis-sleep-breathe 7s ease-in-out infinite; }
 
-@utility jarvis-ring-b {
-  animation: jarvis-spin-reverse 26s linear infinite;
-}
+@keyframes jarvis-companion-breathe { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-6px) scale(1.018); } }
+@keyframes jarvis-aura { 0%, 100% { opacity: .35; transform: scale(.92); } 50% { opacity: .72; transform: scale(1.08); } }
+@keyframes jarvis-play-hop { 0%, 100% { transform: translateY(0) rotate(-1deg) scale(1); } 30% { transform: translateY(-12px) rotate(2deg) scale(1.025); } 65% { transform: translateY(2px) rotate(-2deg) scale(.99); } }
+@keyframes jarvis-sleep-breathe { 0%, 100% { transform: translateY(1px) scale(.94); } 50% { transform: translateY(-3px) scale(.965); } }
 
-@keyframes jarvis-float {
-  0%, 100% { transform: translateY(0) rotate(-0.6deg); }
-  50% { transform: translateY(-8px) rotate(0.6deg); }
-}
-
-@keyframes jarvis-float-slow {
-  0%, 100% { transform: translateY(0) rotate(-1.4deg); }
-  50% { transform: translateY(-4px) rotate(1.4deg); }
-}
-
-@keyframes jarvis-think {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.12); }
-}
-
-@keyframes jarvis-bounce {
-  0%, 100% { transform: translateY(0) scale(1); }
-  30% { transform: translateY(-6px) scale(1.02); }
-  60% { transform: translateY(2px) scale(0.99); }
-}
-
-@utility jarvis-float {
-  animation: jarvis-float 5.5s ease-in-out infinite;
-}
-
-@utility jarvis-float-slow {
-  animation: jarvis-float-slow 9s ease-in-out infinite;
-}
-
-@utility jarvis-think {
-  animation: jarvis-think 1.4s ease-in-out infinite;
-}
-
-@utility jarvis-bounce {
-  animation: jarvis-bounce 1.6s ease-in-out infinite;
+@media (max-width: 640px) {
+  .jarvis-companion-layer { width: 140px; height: 165px; }
+  .jarvis-companion-body { width: 132px; height: 132px; }
 }
