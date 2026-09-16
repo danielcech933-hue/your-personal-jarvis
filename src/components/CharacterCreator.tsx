@@ -1,4 +1,4 @@
-import { Palette, UserRound, WandSparkles } from "lucide-react";
+import { Link2, Palette, UserRound, WandSparkles } from "lucide-react";
 import type { JarvisAppearance } from "@/lib/jarvis-profile";
 
 type Props = { appearance: JarvisAppearance; onChange: (appearance: JarvisAppearance) => void };
@@ -23,10 +23,14 @@ const labels: Record<string, string> = {
   white: "Bílé",
   crimson: "Crimson",
   cyan: "Cyan",
+  violet: "Fialová",
+  rose: "Růžová",
   slim: "Štíhlá",
   athletic: "Sportovní",
   curvy: "Výrazná",
 };
+
+const DEFAULT_VRM = "https://cdn.jsdelivr.net/gh/madjin/vrm-samples@master/vroid/beta/Vita.vrm";
 
 function ChoiceRow<T extends string>({ label, value, values, onChange }: { label: string; value: T; values: readonly T[]; onChange: (value: T) => void }) {
   return (
@@ -50,7 +54,7 @@ export function CharacterCreator({ appearance, onChange }: Props) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-100"><WandSparkles className="h-4 w-4 text-cyan-300" /> Tvoje postava</div>
-          <p className="mt-1 text-[11px] leading-5 text-slate-500">Dospělá anime společnice. Změny se propíšou do jejího vzhledu a uloží k tvému účtu.</p>
+          <p className="mt-1 text-[11px] leading-5 text-slate-500">Dospělá anime společnice. Změny se propíšou do konfigurace postavy a uloží k tvému účtu.</p>
         </div>
         <div className="grid h-10 w-10 place-items-center rounded-xl border border-cyan-300/10 bg-cyan-300/5 text-cyan-200"><UserRound className="h-4 w-4" /></div>
       </div>
@@ -65,6 +69,21 @@ export function CharacterCreator({ appearance, onChange }: Props) {
         <div className="space-y-2">
           <div className="flex items-center justify-between text-[10px] uppercase tracking-[.2em] text-slate-500"><span>Výška</span><span className="text-cyan-200">{appearance.height.toFixed(2)}×</span></div>
           <input aria-label="Výška postavy" type="range" min="0.9" max="1.1" step="0.01" value={appearance.height} onChange={(event) => update("height", Number(event.target.value))} className="w-full accent-cyan-300" />
+        </div>
+
+        <div className="space-y-2 rounded-xl border border-white/6 bg-white/[.02] p-3">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-[.2em] text-slate-500"><Link2 className="h-3.5 w-3.5 text-cyan-300" /> 3D model (VRM)</div>
+          <input
+            aria-label="URL 3D modelu VRM"
+            value={appearance.modelUrl || ""}
+            onChange={(event) => update("modelUrl", event.target.value.trim() || undefined)}
+            placeholder={DEFAULT_VRM}
+            className="w-full rounded-lg border border-white/8 bg-black/20 px-3 py-2 text-[11px] text-slate-200 outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
+          />
+          <div className="flex items-center justify-between gap-2 text-[10px] leading-4 text-slate-500">
+            <span>Vlastní model může být později nahrazen bez změny profilu.</span>
+            <button type="button" onClick={() => update("modelUrl", undefined)} className="shrink-0 rounded-md border border-white/8 px-2 py-1 text-slate-400 transition hover:border-white/20 hover:text-slate-200">Výchozí</button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 rounded-xl border border-white/6 bg-white/[.02] px-3 py-2 text-[10px] text-slate-500"><Palette className="h-3.5 w-3.5 text-cyan-300" /> Každý účet má vlastní konfiguraci postavy.</div>
