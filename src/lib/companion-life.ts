@@ -11,12 +11,26 @@ export type LifeDecision = {
 };
 
 const zones: Record<CompanionZone, { x: number; z: number }> = {
-  center: { x: 0, z: 0.25 },
-  desk: { x: -1.75, z: -0.45 },
-  sofa: { x: 0.95, z: 0.35 },
-  window: { x: 0.2, z: -0.72 },
-  floor: { x: 1.55, z: -0.55 },
+  center: { x: 0.2, z: 0.45 },
+  desk: { x: -1.9, z: -0.35 },
+  sofa: { x: 1.5, z: 0.57 },
+  window: { x: 0.7, z: -1.05 },
+  floor: { x: 2.1, z: 0.1 },
 };
+
+const allowed: Record<CompanionZone, CompanionAction[]> = {
+  center: ["idle", "walk", "wave", "think", "stretch", "dance", "spin", "jump"],
+  desk: ["work", "think", "sit", "idle"],
+  sofa: ["sit", "sleep", "stretch", "think", "idle"],
+  window: ["think", "wave", "stretch", "idle"],
+  floor: ["dance", "spin", "jump", "flip", "stretch", "wave", "walk", "idle"],
+};
+
+/** Keeps an action physically plausible for the zone it happens in. */
+export function fitAction(zone: CompanionZone, action: CompanionAction): CompanionAction {
+  const list = allowed[zone];
+  return list.includes(action) ? action : (list[0] as CompanionAction);
+}
 
 export function getCompanionZonePosition(zone: CompanionZone) {
   return zones[zone];
