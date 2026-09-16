@@ -235,7 +235,6 @@ function addRoom(scene: any, appearance: JarvisAppearance) {
   wall.receiveShadow = true;
   group.add(wall);
 
-  // Desk + monitor
   const deskTop = new T.Mesh(new T.BoxGeometry(1.7, 0.06, 0.72), furnitureMaterial);
   deskTop.position.set(-1.9, 0.74, -0.95);
   deskTop.castShadow = true;
@@ -255,7 +254,6 @@ function addRoom(scene: any, appearance: JarvisAppearance) {
   monitorStand.position.set(-1.9, 0.83, -1.2);
   group.add(monitorStand);
 
-  // Desk chair
   const chairSeat = new T.Mesh(new T.BoxGeometry(0.46, 0.07, 0.46), softMaterial);
   chairSeat.position.set(-1.9, 0.43, -0.35);
   chairSeat.castShadow = true;
@@ -267,7 +265,6 @@ function addRoom(scene: any, appearance: JarvisAppearance) {
   chairPole.position.set(-1.9, 0.2, -0.35);
   group.add(chairPole);
 
-  // Sofa
   const sofaBase = new T.Mesh(new T.BoxGeometry(1.8, 0.36, 0.9), furnitureMaterial);
   sofaBase.position.set(1.5, 0.18, 0.55);
   sofaBase.castShadow = true;
@@ -285,7 +282,6 @@ function addRoom(scene: any, appearance: JarvisAppearance) {
     group.add(arm);
   }
 
-  // Window on the back wall
   const windowGlass = new T.Mesh(new T.PlaneGeometry(2.1, 1.35), glassMaterial);
   windowGlass.position.set(0.7, 1.55, -1.58);
   group.add(windowGlass);
@@ -300,7 +296,6 @@ function addRoom(scene: any, appearance: JarvisAppearance) {
     group.add(bar);
   }
 
-  // Floor plant near the play corner
   const pot = new T.Mesh(new T.CylinderGeometry(0.15, 0.12, 0.28, 16), furnitureMaterial);
   pot.position.set(2.9, 0.14, -0.9);
   group.add(pot);
@@ -432,6 +427,7 @@ export function JarvisCompanion({ state, mood, level, appearance = DEFAULT_APPEA
         if (cancelled) return;
         const vrm = gltf.userData.vrm;
         if (!vrm) throw new Error("VRM model missing");
+        if (vrm?.meta?.metaVersion === "0") VRMUtils.rotateVRM0?.(vrm);
         VRMUtils?.removeUnnecessaryVertices?.(vrm.scene);
         VRMUtils?.combineSkeletons?.(vrm.scene);
         vrm.scene.traverse((object: any) => { object.castShadow = true; object.receiveShadow = true; });
