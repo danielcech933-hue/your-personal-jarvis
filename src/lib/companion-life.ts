@@ -50,7 +50,7 @@ function routine(
 ): LifeDecision {
   return {
     zone,
-    action,
+    action: fitAction(zone, action),
     durationMs: minMs + random() * Math.max(0, maxMs - minMs),
     reason,
   };
