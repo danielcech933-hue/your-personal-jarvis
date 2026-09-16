@@ -1,5 +1,5 @@
 export type JarvisMemory = { id: string; text: string; createdAt: number };
-export type JarvisAppearance = { style: "glamorous" | "cyber" | "casual"; hair: "silver" | "black" | "violet" | "rose"; outfit: "midnight" | "white" | "crimson"; accent: "cyan" | "violet" | "rose"; height: number; body: "slim" | "athletic" | "curvy" };
+export type JarvisAppearance = { style: "glamorous" | "cyber" | "casual"; hair: "silver" | "black" | "violet" | "rose"; outfit: "midnight" | "white" | "crimson"; accent: "cyan" | "violet" | "rose"; height: number; body: "slim" | "athletic" | "curvy"; modelUrl?: string };
 export type JarvisProfile = { characterName: string; userName: string; memories: JarvisMemory[]; favoriteTopics: string[]; conversationStyle: "friendly" | "professional" | "playful" | "concise"; appearance: JarvisAppearance };
 
 const AUTH_KEY = "jarvis.auth.v1";
