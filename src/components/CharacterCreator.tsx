@@ -17,14 +17,12 @@ const labels: Record<string, string> = {
   casual: "Casual",
   silver: "Stříbrné",
   black: "Černé",
-  violet: "Fialové",
-  rose: "Růžové",
+  violet: "Fialová",
+  rose: "Růžová",
   midnight: "Půlnoční",
   white: "Bílé",
   crimson: "Crimson",
   cyan: "Cyan",
-  violet: "Fialová",
-  rose: "Růžová",
   slim: "Štíhlá",
   athletic: "Sportovní",
   curvy: "Výrazná",
@@ -81,7 +79,7 @@ export function CharacterCreator({ appearance, onChange }: Props) {
             className="w-full rounded-lg border border-white/8 bg-black/20 px-3 py-2 text-[11px] text-slate-200 outline-none transition placeholder:text-slate-600 focus:border-cyan-300/40"
           />
           <div className="flex items-center justify-between gap-2 text-[10px] leading-4 text-slate-500">
-            <span>Vlastní model může být později nahrazen bez změny profilu.</span>
+            <span>Sem lze zadat vlastní VRM model pro osobní postavu.</span>
             <button type="button" onClick={() => update("modelUrl", undefined)} className="shrink-0 rounded-md border border-white/8 px-2 py-1 text-slate-400 transition hover:border-white/20 hover:text-slate-200">Výchozí</button>
           </div>
         </div>
