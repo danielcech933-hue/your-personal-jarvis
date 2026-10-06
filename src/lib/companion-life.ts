@@ -37,7 +37,7 @@ export function getCompanionZonePosition(zone: CompanionZone) {
 }
 
 function pick<T>(items: T[], random: () => number) {
-  return items[Math.floor(random() * items.length)] ?? items[0];
+  return (items[Math.floor(random() * items.length)] ?? items[0]) as T;
 }
 
 function routine(
